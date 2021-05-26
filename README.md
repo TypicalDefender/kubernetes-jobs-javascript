@@ -1,9 +1,5 @@
 # kubernetes-job-javascript
 
-[![Build Status][build]](https://travis-ci.org/godaddy/kubernetes-client) 
-
-
-
 Launching a job inside a kubernetes cluster and maintaining deployments is simplified
 
 ## Installation
