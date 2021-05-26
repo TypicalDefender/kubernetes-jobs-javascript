@@ -37,185 +37,50 @@ const deployments = await client.api.v1.namespaces('default').deployments.get();
 With kubernetes-client 5.0.0 we added support for generating these bindings dynamically from your kube-apiserver’s swagger.json. You can now do the following to get a client that matches the operations your Kubernetes cluster supports:
 
 ```js
-const { KubeConfig } = require('kubernetes-client')
-const kubeconfig = new KubeConfig()
-kubeconfig.loadFromFile('~/some/path')
-const Request = require('kubernetes-client/backends/request')
-
-const backend = new Request({ kubeconfig })
-const client = new Client({ backend, version: '1.13' })
-```
-
-provide a configuration object from memory:
-
-```js
-// Should match the kubeconfig file format exactly
-const config = {
-  apiVersion: 'v1',
-  clusters: [],
-  contexts: [],
-  'current-context': '',
-  kind: 'Config',
-  users: []
-}
-const { KubeConfig } = require('kubernetes-client')
-const kubeconfig = new KubeConfig()
-kubeconfig.loadFromString(JSON.stringify(config))
-
-const Request = require('kubernetes-client/backends/request')
-const backend = new Request({ kubeconfig })
-const client = new Client({ backend, version: '1.13' })
-```
-
-and you can also specify the context by setting it in the `kubeconfig`
-object:
-
-```js
-kubeconfig.setCurrentContext('dev')
-```
-
-You can also elide the `.version` and pass an OpenAPI specification:
-
-```js
-const spec = require('./swagger.json')
-const client = new Client({ spec })
-```
-
-or load a specification dynamically from the kube-apiserver:
-
-```js
-const client = new Client()
+const client = new Client({ config: config.fromKubeconfig() });
 await client.loadSpec()
 ```
 
-See [Examples](#examples) for more configuration examples.
+It is often useful to track the state of your Deployments outside of your Kubernetes API. For example, there is a New Relic API to record changes to Deployments. If your automation deploys a new image, or if a Horizontal Pod Autoscaler scales out a Deployment, automatically notifying New Relic makes it easy to track potential performance improvements or regressions. Many third party services offer similar APIs for notifying them about changes to deployed services (e.g., GitHub Deployments, ServiceNow Change Requests, GitLab deployments, Slack Incoming Webhooks, …).
 
-## Basic usage
+We wrote an example, called the Deployment Notifier, that logs messages to the console when specific Deployments change. Deployment Notifier uses a DeploymentNotifier Custom Resource Definition (CRD) to allow Kubernetes users to specify which Deployments they want notifications on, and a custom controller implemented with kubernetes-client to process DeploymentNotifiers and “notify” the console at the right time.
 
-kubernetes-client translates Path Item Objects \[[1]\] (*e.g*.,
-`/api/v1/namespaces`) to object chains ending in HTTP methods (*e.g.*,
-`api.v1.namespaces.get`).
-
-So, to fetch all Namespaces:
+Extending the API with a DeploymentNotifier
+The first thing our custom controller does is create an API client and attempt to extend the Kubernetes API by creating a DeploymentNotifier CRD. We create the DeploymentNotifier in the controller to make it easy to install Deployment Notifier on a new Kubernetes cluster simply by running the controller.
 
 ```js
-const namespaces = await client.api.v1.namespaces.get()
-```
+async function main() {
+  try {
+    const client = new Client({ config: config.fromKubeconfig() });
+    await client.loadSpec();
 
-kubernetes-client translates Path Templating \[[2]\] (*e.g.*,
-`/apis/apps/v1/namespaces/{namespace}/deployments`) to function calls (*e.g.*,
-`apis.apps.v1.namespaces('default').deployments`).
+    //
+    // Create the CRD if it doesn't already exist.
+    //
+    try {
+      await client.apis['apiextensions.k8s.io'].v1beta1.customresourcedefinitions.post({ body: crd });
+    } catch (err) {
+      //
+      // API returns a 409 Conflict if CRD already exists.
+      //
+      if (err.statusCode !== 409) throw err;
+    }
 
-So, to create a new Deployment in the default Namespace:
+    //
+    // Add endpoints to our client
+    //
+    client.addCustomResourceDefinition(crd);
 
-```js
-const deploymentManifest = require('./nginx-deployment.json')
-const create = await client.apis.apps.v1.namespaces('default').deployments.post({ body: deploymentManifest })
-```
-
-and then fetch your newly created Deployment:
-
-```js
-const deployment = await client.apis.apps.v1.namespaces('default').deployments(deploymentManifest.metadata.name).get()
-```
-
-and finally, remove the Deployment:
-
-```js
-await client.apis.apps.v1.namespaces('default').deployments(deploymentManifest.metadata.name).delete()
-```
-
-kubernetes-client supports `.delete`, `.get`, `.patch`, `.post`, and `.put`.
-
-## Documentation
-
-kubernetes-client generates documentation for the included
-specifications:
-
-* [Kubernetes API v1.10](docs/1.10/README.md)
-* [Kubernetes API v1.11](docs/1.11/README.md)
-* [Kubernetes API v1.12](docs/1.12/README.md)
-* [Kubernetes API v1.13](docs/1.13/README.md)
-
-## TypeScript
-
-kubernetes-client includes a typings declartion file for Kubernetes
-API 1.13 and a complimentry `Client1_13` class:
-
-```typescript
-import * as ApiClient from 'kubernetes-client';
-
-const Client = ApiClient.Client1_13;
-const client = new Client({ version: '1.13' });
-```
-
-When using TypeScript, kubernetes-client does not support dynamically
-generating a client via `.loadSpec()`.
-
-## Examples
-
-[examples/](examples/) has snippets for using kubernetes-client:
-
-* The basic usage example from above: [basic.js](./examples/basic.js)
-* Use error handling to simulate `kubectl apply -f`: [apply-deploy.js](./examples/apply-deploy.js)
-* Create a `client` from your kube-apiserver's swagger.json:
-  [client-from-apiserver-swagger.js](./examples/client-from-apiserver-swagger.js)
-* Create a `client` from one of the included Swagger specifications:
-  [sync-client-version.js](./examples/sync-client-version.js)
-* Using resource aliases supported by `kubectl` (*e.g.*, `.po` vs
-  `.pods`): [convenience-properties.js](./examples/convenience-properties.js)
-* Use watch endpoints to get a JSON stream of Deployment events:
-  [watch.js](./examples/watch.js)
-* Extend the Kubernetes API and a `client` with a
-  CustomerResourceDefinition: [using-crds.js](./examples/using-crds.js)
-* An extended CustomResourceDefinition example that implements a
-  controller to "notify" on changes to Deployment objects:
-  [deployment-notifier.js](./examples/deployment-notifier.js)
-* A basic canary controller that removes Pods from a Service if they
-  log an error: [canary-controller.js](./examples/canary-controller.js)
-* Create a `client` using basic-auth:
-  [basic-auth.js](./examples/basic-auth.js)
-* Create a `client` using IAM authenticator and cmd auth (works with Amazon EKS):
-  [iam-auth.js](./examples/iam-auth.js)
-* Generate [badges](https://github.com/badges/shields) showing the
-  status of your Deployments. Illustrates using the in-cluster config:
-  [kubernetes-badges](https://github.com/silasbw/kubernetes-badges)
-* Create a deployment, patch a change, and rollback to the original version:
-  [deployment-create-patch-rollback.js](./examples/deployment-create-patch-rollback.js)
-* Access [VerticalPodAutoscalers](https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler): [vpas/](./examples/vpas)
-* Create a `client` using an in-cluster configuration: [in-cluster-auth.js](./examples/in-cluster-auth.js)
-
-## Contributing
-
-See the kubernetes-client [Issues](./issues) if you're interested in
-helping out; and look over the [CONTRIBUTING.md](./CONTRIBUTING.md)
-before submitting new Issues and Pull Requests.
-
-## Testing
-
-Run the unit tests:
+    //
+    // Watch DeploymentNotifiers.
+    //
+    watchDeploymentNotifiers();
+  } catch (err) {
+    console.error('Error: ', err);
+  }
+}
 
 ```
-npm test
-```
-
-The integration tests use the `current-context` in your kubeconfig file. Run the integration tests:
-
-```
-npm run test-integration
-```
-
-Run integration tests with the `@kubernetes/client-node` backend:
-
-```
-KUBERNETES_CLIENT_BACKEND=client-node npm run test-integration
-```
-
-## References
-
-* [An Intuitive Node.js Client for the Kubernetes API](https://godaddy.github.io/2018/04/10/an-intuitive-nodejs-client-for-the-kubernetes-api/)
-* [Kubernetes Reference Documentation](https://kubernetes.io/docs/reference/)
-
 ## License
 
 [MIT](LICENSE)
