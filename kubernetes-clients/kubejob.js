@@ -40,14 +40,12 @@ async function createOtfSessionJobInKube() {
         const launchResponse = await client.apis.batch.v1.ns('<put your namespace here>').jobs.post({ body: launchParameters });
         return launchResponse;
     } catch (err) {
-        let returnObj = { failed: true, error: err };
         //
         // API returns a 409 Conflict if job already exists.
         //
-        if (err.statusCode === statusCodes.CONFLICT) {
-            return returnObj;
+        if (err.statusCode === 409) {
+            //handle here accordingly
         }
-        return { failed: true, error: err }
     }
 }
 
