@@ -89,6 +89,12 @@ const client = new Client({
     version: '1.10'
 });
 ```
+## Job API
+ns stands for namespace and add you namespace accordingly for scaling and this is a post API because kube has to place a job inside the cluster.
+It returns 409 conflict if the job with same name already exists
+```js
+  client.apis.batch.v1.ns('<put your namespace name>').jobs.post({ body: launchParameters });
+```
 ## Steps for setting the flow
 * Create your kubernetes cluster (any cloud provider)
 * Create kube configuration on our servers from where you are going to launch a job
