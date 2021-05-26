@@ -4,7 +4,7 @@
 
 
 
-Simplified [Kubernetes API](http://kubernetes.io/) client for Node.js.
+Launching a job inside a kubernetes cluster and maintaining deployments is simplified
 
 ## Installation
 
@@ -80,6 +80,19 @@ async function main() {
   }
 }
 
+```
+
+#Launch Jobs with the api configuration
+Make sure you have kubeconfig set up refer to kubeconfig.yaml and install kubectl and do a kube configuration
+on the running machine so that you can launch jobs from that machine.
+
+The below configuration takes config from the .kube/<config-file-name>
+
+```js
+const client = new Client({
+    config: config.fromKubeconfig(),
+    version: '1.10'
+});
 ```
 ## License
 
