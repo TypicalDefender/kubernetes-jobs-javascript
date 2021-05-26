@@ -37,7 +37,7 @@ async function createOtfSessionJobInKube() {
         //
         // Create the job if it doesn't already exist and add endpoints to our client
         //
-        const launchResponse = await client.apis.batch.v1.ns(recorderCategory.toLowerCase()).jobs.post({ body: launchParameters });
+        const launchResponse = await client.apis.batch.v1.ns('<put your namespace here>').jobs.post({ body: launchParameters });
         return launchResponse;
     } catch (err) {
         let returnObj = { failed: true, error: err };
