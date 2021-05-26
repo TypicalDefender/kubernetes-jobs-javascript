@@ -6,7 +6,6 @@ Launching a job inside a kubernetes cluster and maintaining deployments is simpl
 
 ```
 npm install
-
 ```
 
 ## Initializing
