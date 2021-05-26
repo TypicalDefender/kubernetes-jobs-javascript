@@ -77,7 +77,7 @@ async function main() {
 
 ```
 
-#Launch Jobs with the api configuration
+## Launch Jobs with the api configuration
 Make sure you have kubeconfig set up refer to kubeconfig.yaml and install kubectl and do a kube configuration
 on the running machine so that you can launch jobs from that machine.
 
@@ -89,6 +89,11 @@ const client = new Client({
     version: '1.10'
 });
 ```
+## Steps for setting the flow
+* Create your kubernetes cluster (any cloud provider)
+* Create kube configuration on our servers from where you are going to launch a job
+* utilisize the yaml config and kubejob inside the folder given
+  
 ## License
 
 [MIT](LICENSE)
