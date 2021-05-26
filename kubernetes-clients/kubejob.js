@@ -7,28 +7,28 @@ const client = new Client({
 
 async function createOtfSessionJobInKube() {
     let launchParameters = {
-        "apiVersion": "batch/v1",
-        "kind": "Job",
-        "metadata": {
+        'apiVersion': 'batch/v1',
+        'kind': 'Job',
+        'metadata': {
             "name": '/* add a custom name here */'
         },
-        "spec": {
-            "template": {
-                "metadata": {
-                    "name": `/* add a custom name for your template metadat here */`
+        'spec': {
+            'template': {
+                'metadata': {
+                    'name': `/* add a custom name for your template metadat here */`
                 },
-                "spec": {
-                    "containers": [{
-                        "name": '/* put your container name */',
-                        "image": '/* put you image repository link either from docker hub or ecr */',
-                        "command": [
+                'spec': {
+                    'containers': [{
+                        'name': '/* put your container name */',
+                        'image': '/* put you image repository link either from docker hub or ecr */',
+                        'command': [
                             '/* add the container starter command if you have any */'
                         ],
-                        "args": [
+                        'args': [
                             '/* put your container arguments you have any */'
                         ]
                     }],
-                    "restartPolicy": "OnFailure/Never"
+                    'restartPolicy': 'OnFailure/Never'
                 }
             }
         }
